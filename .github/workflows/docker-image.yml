@@ -1,0 +1,40 @@
+name: Deploy to ECS
+
+on:
+  push:
+    branches:
+      - main  # Trigger this workflow on push to the main branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    # Step 1: Checkout the code
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    # Step 2: Log in to Amazon ECR
+    - name: Log in to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+
+    # Step 3: Build, Tag, and Push the Docker Image
+    - name: Build, Tag, and Push Docker Image
+      env:
+        ECR_REGISTRY: 637423496095.dkr.ecr.eu-north-1.amazonaws.com
+        ECR_REPOSITORY: taskmaster-repo
+        IMAGE_TAG: latest
+      run: |
+        docker build -t $ECR_REPOSITORY:$IMAGE_TAG .
+        docker tag $ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+    # Step 4: Deploy to Amazon ECS
+    - name: Deploy to Amazon ECS
+      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+      with:
+        task-definition: task-definition.json
+        service: taskmaster-service
+        cluster: taskmaster-cluster
+        wait-for-service-stability: true
